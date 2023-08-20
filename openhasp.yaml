@@ -30,8 +30,8 @@ terminal:
       - obj: "p0b19"
         properties:
           "hidden": "{{ false if states('openhasp.terminal') == '1' else true }}"
-          "text_color": "{% if states('sun.sun') == 'above_horizon' %}#AEB6BF{% else %}#F39C12{% endif %}"
-          "text": "{% if states('sun.sun') == 'above_horizon' %}\uE75A{% else %}\uE594{% endif %}"
+          "text_color": "{% if states('sun.sun') == 'above_horizon' %}#F39C12{% else %}#AEB6BF{% endif %}"
+          "text": "{% if states('sun.sun') == 'above_horizon' %}\uE599{% else %}\uE594{% endif %}"
         #page drawer
       - obj: "p0b11"
         event:
@@ -94,9 +94,26 @@ terminal:
         properties:
           "text": "{{ states('sensor.total_lights_on') }} On"
 
+      - obj: "p1b5"
+        properties:
+          "text": "{% if states('sun.sun') == 'above_horizon' %}\uE599\uE140{% else %}\uE599\uE143{% endif %}"
+          
       - obj: "p1b6"
         properties:
-          "text": "{{ states('sensor.home_hours_of_sun_0d') }}h"
+          "text": |
+                {% if states('sun.sun') == 'above_horizon' %}
+                  {% set next_setting = states('sensor.sun_next_setting') %}
+                  {% if next_setting != 'unknown' %}
+                    At {{ as_timestamp(next_setting) | timestamp_custom('%H:%M', false) }}
+                {% else %}
+                    {% set next_rising = states('sensor.sun_next_rising') %}
+                    {% if next_rising != 'unknown' %}
+                      At {{ as_timestamp(next_rising) | timestamp_custom('%H:%M', false) }}
+                    {% endif %}
+                  {% endif %}
+                {% endif %}
+
+
       - obj: "p1b8" 
         properties:
           "text_color": "{{ '#2196f3' if states('sensor.home_air_quality_0d') == 'good' else '#e1e1e1' }}"
@@ -107,6 +124,7 @@ terminal:
       - obj: "p1b13"
         properties:
           "text": "{% if is_state('weather.home','clear-night') %}\uE5A8{% elif is_state('weather.home','cloudy') %}\uE590{% elif is_state('weather.home','fog') %}\uE591{% elif is_state('weather.home','hail') %}\uE592{% elif is_state('weather.home','lightning') %}\uE593{% elif is_state('weather.home','lightning-rainy') %}\uE67E{% elif is_state('weather.home','partlycloudy') %}\uE595{% elif is_state('weather.home','pouring') %}\uE596{% elif is_state('weather.home','rainy') %}\uE597{% elif is_state('weather.home','snowy') %}\uE598{% elif is_state('weather.home','snowy-rainy') %}\uE67F{% elif is_state('weather.home','sunny') %}\uE599{% elif is_state('weather.home','windy') %}\uE59D{% elif is_state('weather.home','windy-variant') %}\uE59E{% elif is_state('weather.home','exceptional') %}\uE026{% elif is_state('weather.home','unavailable') %}\uE156{% else %}{{ states('weather.home') }}{% endif %}"
+          "text_color": "{% if is_state('weather.home','clear-night') %}green{% elif is_state('weather.home','cloudy') %}Lavender{% elif is_state('weather.home','fog') %}grey{% elif is_state('weather.home','hail') %}RosyBrown{% elif is_state('weather.home','lightning') %}OrangeRed{% elif is_state('weather.home','lightning-rainy') %}Crimson{% elif is_state('weather.home','partlycloudy') %}Moccasin{% elif is_state('weather.home','pouring') %}DarkOrange{% elif is_state('weather.home','rainy') %}Gold{% elif is_state('weather.home','snowy') %}DarkKhaki{% elif is_state('weather.home','snowy-rainy') %}BlueViolet{% elif is_state('weather.home','sunny') %}GreenYellow{% elif is_state('weather.home','windy') %}DarkCyan{% elif is_state('weather.home','windy-variant') %}Aquamarine{% elif is_state('weather.home','exceptional') %}Brown{% elif is_state('weather.home','unavailable') %}Black{% else %}{{ states('weather.home') }}{% endif %}"
 
       - obj: "p1b18"
         properties:
@@ -138,7 +156,7 @@ terminal:
       # Page2: Chips
       - obj: "p2b3" # energy
         properties:
-          "text": "{{ states('sensor.average_electricity_price') }}c/kWh"
+          "text": "{{ states('sensor.tuf_ax5400_connected_devices') }} Devices"
       - obj: "p2b5" # lights icon
         properties:
           "text_color": "{{ '#e88c03' if (expand('light.kaikki_valot') | selectattr('state','eq','on') | list | count() > 0) else '#e1e1e1' }}"
@@ -163,23 +181,18 @@ terminal:
           "text": "{{ states('sensor.ruuvitag_7581_temperature') }}°C"
       - obj: "p2b23" # Humidity card
         properties:
-          "text": "{{ states('sensor.cheapest_hours_energy_tomorrow') }}"
+          "text": "{% if state_attr('sensor.nordpool_kwh_fi_eur_3_10_024', 'max') == 'unknown' %}Not Known{% else %}{{ state_attr('sensor.nordpool_kwh_fi_eur_3_10_024', 'max') | timestamp_custom('%H:%M', false) }}{% endif %}"
+      - obj: "p2b27" # Highest tomorrow
+        properties:
+          "text": "{% if states('sensor.highest_price_hours_energy_tomorrow') == 'unknown' %}Not Known{% else %}{{ states('sensor.highest_price_hours_energy_tomorrow') | timestamp_custom('%H:%M', false) }}{% endif %}"
+      - obj: "p2b30" # Cheapest tomorrow
+        properties:
+          "text": "{% if states('sensor.cheapest_hours_energy_tomorrow') == 'unknown' %}Not Known{% else %}{{ states('sensor.cheapest_hours_energy_tomorrow') | timestamp_custom('%H:%M', false) }}{% endif %}"
 
 
-      - obj: "p2b89"
-        event:
-          "down":
-            - service: openhasp.command # display the on-demand pop-up
-              target:
-                entity_id: openhasp.terminal
-              data:
-                keyword: jsonl
-                parameters: >-
-                    {"page":2,"id":90,"obj":"obj","x":5,"y":355,"w":310,"h":90,"radius":15,"click":true,"border_side":0,"bg_color":"#1c1c1c"}
-                    {"page":2,"id":91,"obj":"label","parentid":90,"x":5,"y":5,"w":310,"h":25,"text":"Set Theme For Displays","text_font":24,"align":"center"}
-                    {"page":2,"id":92,"obj":"btn","parentid":90,"x":18,"y":30,"w":95,"h":40,"text":"LIGHT","click":true,"text_font":16,"bg_opa":50,"bg_color":"#111","val":0}
-                    {"page":2,"id":93,"obj":"btn","parentid":90,"x":113,"y":30,"w":95,"h":40,"text":"DARK","click":true,"text_font":16,"bg_opa":50,"bg_color":"#111","val":0}
-                    {"page":2,"id":94,"obj":"btn","parentid":90,"x":208,"y":30,"w":95,"h":40,"text":"BLACK","click":true,"text_font":16,"bg_opa":50,"bg_color":"#111","val":0}
+
+
+
 
 
       - obj: "p2b92"
@@ -373,7 +386,7 @@ terminal:
                data:
                  keyword: jsonl
                  parameters: >-
-                        {"page":4,"id":112,"obj":"obj","x":20,"y":120,"w":290,"h":150,"radius":15,"click":true,"border_side":0,"bg_color":"#1c1c1c"}
+                        {"page":4,"id":112,"obj":"obj","x":5,"y":120,"w":310,"h":160,"radius":15,"click":true,"border_side":0,"bg_color":"#2C3E50","bg_grad_color":"#154360","bg_grad_dir":1,"shadow_opa":255,"shadow_color":"black","shadow_width":20,"shadow_spread":10}
                         {"page":4,"id":113,"obj":"label","parentid":112,"x":20,"y":0,"w":270,"h":150,"radius":15,"click":true,"border_side":0,"bg_color":"#1c1c1c","text":"Batteries","align":"center"}
                         {"page":4,"id":2,"obj":"obj","parentid":112,"x":10,"y":35,"w":95,"h":75,"radius":15,"click":true,"border_side":0,"bg_color":"#1c1c1c"}
                         {"page":4,"id":3,"obj":"label","parentid":112,"x":25,"y":40,"w":90,"h":40,"text":"Watch","text_font":16,"text_color":"#9b9b9b"}
@@ -415,7 +428,7 @@ terminal:
                data:
                  keyword: jsonl
                  parameters: >-
-                        {"page":4,"id":115,"obj":"obj","x":20,"y":150,"w":290,"h":150,"radius":15,"click":true,"border_side":0,"bg_color":"#1c1c1c"}
+                        {"page":4,"id":115,"obj":"obj","x":5,"y":150,"w":310,"h":160,"radius":15,"click":true,"border_side":0,"bg_color":"#2C3E50","bg_grad_color":"#154360","bg_grad_dir":1,"shadow_opa":255,"shadow_color":"black","shadow_width":20,"shadow_spread":10}
                         {"page":4,"id":116,"obj":"label","parentid":115,"x":20,"y":0,"w":270,"h":150,"radius":15,"click":true,"border_side":0,"bg_color":"#1c1c1c","text":"Door Counts","align":"center"}
                         {"page":4,"id":8,"obj":"obj","parentid":115,"x":10,"y":35,"w":95,"h":75,"radius":15,"click":true,"border_side":0,"bg_color":"#1c1c1c"}
                         {"page":4,"id":9,"obj":"label","parentid":115,"x":25,"y":40,"w":90,"h":40,"text":"Front Door","text_font":16,"text_color":"#9b9b9b"}
@@ -428,7 +441,8 @@ terminal:
                         {"page":4,"id":17,"obj":"obj","parentid":115,"x":210,"y":35,"w":95,"h":75,"radius":15,"click":true,"border_side":0,"bg_color":"#1c1c1c"}
                         {"page":4,"id":18,"obj":"label","parentid":115,"x":230,"y":40,"w":90,"h":40,"text":"Balcony","text_font":16,"text_color":"#9b9b9b"}
                         {"page":4,"id":19,"obj":"label","parentid":115,"x":230,"y":65,"w":90,"h":40,"text":"214%","text_font":24}
-                        {"page":4,"id":117,"obj":"btn","parentid":115,"x":10,"y":110,"w":280,"h":35,"radius":255,"text":"Close","text_font":20,"text_color":"#FFFFFF"}
+                        
+                        {"page":4,"id":117,"obj":"btn","parentid":115,"x":10,"y":115,"w":280,"h":35,"radius":255,"text":"Close","text_font":20,"text_color":"#FFFFFF"}
                 
       - obj: "p4b115"
         event:
@@ -504,7 +518,7 @@ terminal:
                data:
                  keyword: jsonl
                  parameters: >-
-                    {"page":4,"id":31,"obj":"obj","x":10,"y":40,"w":300,"h":150,"radius":15,"click":true,"border_side":0,"bg_color":"#1c1c1c"}
+                    {"page":4,"id":31,"obj":"obj","x":10,"y":40,"w":300,"h":150,"radius":15,"click":true,"border_side":0,"bg_color":"#2C3E50","bg_grad_color":"#154360","bg_grad_dir":1,"shadow_opa":255,"shadow_color":"black","shadow_width":20,"shadow_spread":10}
                     {"page":4,"id":41,"obj":"obj","parentid":31,"x":0,"y":35,"w":95,"h":75,"radius":15,"click":true,"border_side":0,"bg_color":"#1c1c1c"}
                     {"page":4,"id":32,"obj":"label","parentid":31,"x":18,"y":47,"w":200,"h":40,"text":"CPU Use","text_font":16,"text_color":"#9b9b9b"}
                     {"page":4,"id":33,"obj":"label","parentid":31,"x":18,"y":70,"w":200,"h":40,"text":"214%","text_font":24}
@@ -569,16 +583,62 @@ terminal:
                data:
                  keyword: jsonl
                  parameters: >-
-                     {"page":4,"id":40,"obj":"obj","x":10,"y":40,"w":300,"h":150,"radius":15,"click":true,"border_side":0,"bg_color":"#111"}
-                     {"page":4,"id":41,"obj":"obj","parentid":40,"x":0,"y":10,"w":95,"h":80,"radius":15,"border_side":0,"bg_color":"#1c1c1c"}
-                     {"page":4,"id":42,"obj":"btn","parentid":40,"x":18,"y":22,"w":60,"h":60,"radius":255,"text":"PC","text_font":16,"text_color":"#FFFFFF"}
+                     {"page":4,"id":40,"obj":"obj","x":10,"y":40,"w":300,"h":250,"radius":15,"click":true,"border_side":0,"bg_color":"#2C3E50","bg_grad_color":"#154360","bg_grad_dir":1,"shadow_opa":255,"shadow_color":"black","shadow_width":20,"shadow_spread":10}
+        
+                     {"page":4,"id":41,"obj":"obj","parentid":40,"x":10,"y":10,"w":95,"h":80,"radius":15,"border_side":0,"bg_color":"#1c1c1c"}
+                     {"page":4,"id":42,"obj":"btn","parentid":40,"x":27,"y":22,"w":60,"h":60,"radius":255,"text":"PC","text_font":16,"text_color":"#FFFFFF"}
+        
                      {"page":4,"id":44,"obj":"obj","parentid":40,"x":102,"y":10,"w":95,"h":80,"radius":15,"border_side":0,"bg_color":"#1c1c1c"}
                      {"page":4,"id":45,"obj":"btn","parentid":40,"x":120,"y":22,"w":60,"h":60,"radius":255,"text":"Server","text_font":16,"text_color":"#FFFFFF"}
-                     {"page":4,"id":47,"obj":"obj","parentid":40,"x":207,"y":10,"w":95,"h":80,"radius":15,"border_side":0,"bg_color":"#1c1c1c"}
-                     {"page":4,"id":48,"obj":"btn","parentid":40,"x":223,"y":22,"w":60,"h":60,"radius":255,"text":"QNAP","text_font":16,"text_color":"#FFFFFF"}
-                     {"page":4,"id":49,"obj":"btn","parentid":40,"x":10,"y":110,"w":280,"h":35,"radius":255,"text":"Close","text_font":20,"text_color":"#FFFFFF"}
+       
+                     {"page":4,"id":47,"obj":"obj","parentid":40,"x":197,"y":10,"w":95,"h":80,"radius":15,"border_side":0,"bg_color":"#1c1c1c"}
+                     {"page":4,"id":48,"obj":"btn","parentid":40,"x":212,"y":22,"w":60,"h":60,"radius":255,"text":"QNAP","text_font":16,"text_color":"#FFFFFF"}
+
+                     {"page":4,"id":141,"obj":"obj","parentid":40,"x":10,"y":100,"w":95,"h":80,"radius":15,"border_side":0,"bg_color":"#1c1c1c"}
+                     {"page":4,"id":142,"obj":"btn","parentid":40,"x":27,"y":112,"w":60,"h":60,"radius":255,"text":"TV","text_font":16,"text_color":"#FFFFFF"}
+        
+                     {"page":4,"id":144,"obj":"obj","parentid":40,"x":102,"y":100,"w":95,"h":80,"radius":15,"border_side":0,"bg_color":"#1c1c1c"}
+                     {"page":4,"id":145,"obj":"btn","parentid":40,"x":120,"y":112,"w":60,"h":60,"radius":255,"text":"Wallpanel","text_font":16,"text_color":"#FFFFFF"}
+       
+                     {"page":4,"id":147,"obj":"obj","parentid":40,"x":197,"y":100,"w":95,"h":80,"radius":15,"border_side":0,"bg_color":"#1c1c1c"}
+                     {"page":4,"id":148,"obj":"btn","parentid":40,"x":212,"y":112,"w":60,"h":60,"radius":255,"text":"Terminal","text_font":16,"text_color":"#FFFFFF"}
+
+
+                     {"page":4,"id":49,"obj":"btn","parentid":40,"x":10,"y":210,"w":280,"h":35,"radius":255,"text":"Close","text_font":20,"text_color":"#FFFFFF"}
                      
-        # network tab
+      - obj: "p4b189"
+        event:
+          "down":
+            - service: openhasp.command # display the on-demand pop-up
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: jsonl
+                parameters: >-
+                    {"page":4,"id":190,"obj":"obj","x":5,"y":100,"w":310,"h":140,"radius":15,"click":true,"border_side":0,"bg_color":"#2C3E50","bg_grad_color":"#154360","bg_grad_dir":1,"shadow_opa":255,"shadow_color":"black","shadow_width":20,"shadow_spread":10}
+                    {"page":4,"id":191,"obj":"label","parentid":190,"x":5,"y":5,"w":310,"h":30,"text":"Set Theme For Displays","text_font":24,"align":"center"}
+                    {"page":4,"id":192,"obj":"btn","parentid":190,"x":10,"y":45,"w":95,"h":40,"text":"LIGHT","click":true,"text_font":16,"bg_opa":50,"bg_color":"#111","val":0}
+                    {"page":4,"id":193,"obj":"btn","parentid":190,"x":105,"y":45,"w":95,"h":40,"text":"DARK","click":true,"text_font":16,"bg_opa":50,"bg_color":"#111","val":0}
+                    {"page":4,"id":194,"obj":"btn","parentid":190,"x":200,"y":45,"w":95,"h":40,"text":"BLACK","click":true,"text_font":16,"bg_opa":50,"bg_color":"#111","val":0}
+                    {"page":4,"id":195,"obj":"btn","parentid":190,"x":15,"y":95,"w":275,"h":35,"radius":255,"text":"Close","text_font":20,"bg_opa":50,"bg_color":"#111","text_color":"#FFFFFF"}
+
+
+      - obj: "p4b190"
+        event:
+          "up":
+            - service: openhasp.command
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: p4b190.delete
+      - obj: "p4b195"
+        event:
+          "up":
+            - service: openhasp.command
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: p4b190.delete
 
       - obj: "p4b41"
         properties:
@@ -646,6 +706,75 @@ terminal:
                 entity_id: openhasp.terminal
               data:
                 keyword: p4b40.delete
+                
+      - obj: "p4b141"
+        properties:
+          "bg_color": "{{ 'green' if states('media_player.sony_xr_65x93j') == 'on' else '#e1e1e1' }}"
+        event:
+          "up":
+            - service: media_player.toggle
+              entity_id: media_player.sony_xr_65x93j
+            - service: openhasp.command
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: p4b40.delete
+      - obj: "p4b142"
+        event:
+          "up":
+            - service: media_player.toggle
+              entity_id: media_player.sony_xr_65x93j
+            - service: openhasp.command
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: p4b40.delete
+      - obj: "p4b144"
+        properties:
+          "bg_color": "{{ '#e1e1e1' if states('switch.power_monitor_2_socket') == 'off' else 'green' }}"
+        event:
+          "up":
+            - service: switch.toggle
+              entity_id: switch.power_monitor_2_socket
+            - service: openhasp.command
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: p4b40.delete
+      - obj: "p4b145"
+        event:
+          "up":
+            - service: switch.toggle
+              entity_id: switch.power_monitor_2_socket
+            - service: openhasp.command
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: p4b40.delete
+      - obj: "p4b147"
+        properties:
+          "bg_color": "{{ '#e1e1e1' if states('button.terminal_restart') == 'on' else 'green' }}"
+        event:
+          "up":
+            - service: button.press
+              entity_id: button.terminal_restart
+            - service: openhasp.command
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: p4b40.delete
+      - obj: "p4b148"
+        event:
+          "up":
+            - service: button.press
+              entity_id: button.terminal_restart
+            - service: openhasp.command
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: p4b40.delete
+                
+                
       - obj: "p4b49"
         event:
           "up":
@@ -1003,11 +1132,51 @@ terminal:
               entity_id: "light.olohuone_2"
       - obj: "p12b15" # on/off label
         properties:
-          "text": |
-                {{ expand('light.olohuone_2') | selectattr('state','eq','on') | list | count() if (expand('light.olohuone_2') | selectattr('state','eq','on') | list | count() > 0) else "0" }} Lamps On
+          "text": "{{ expand('light.olohuone_2') | selectattr('state','eq','on') | list | count() if (expand('light.olohuone_2') | selectattr('state','eq','on') | list | count() > 0) else '0' }} Lamps On"
       - obj: "p12b13" # icon
         properties:
           "text_color": "{{ '#e88c03' if is_state('light.olohuone_2', 'on') else '#6F6F6F' }}"
+          "color": >
+                {% if is_state('light.olohuone_2','on') %}
+                {% set rgb = state_attr('light.olohuone_2','rgb_color') %}
+                {{ "#%02x%02x%02x" | format(rgb[0],rgb[1],rgb[2]) }}
+                {% endif %}
+        event:
+          "up":
+            - service: openhasp.command # display the on-demand pop-up
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: jsonl
+                parameters: >-
+                     {"page":12,"id":78,"obj":"obj","x":40,"y":40,"w":240,"h":270,"radius":15,"click":true,"border_side":0,"bg_color":"#2C3E50","bg_grad_color":"#154360","bg_grad_dir":1,"shadow_opa":255,"shadow_color":"black","shadow_width":20,"shadow_spread":10}
+                     {"page":12,"id":79,"parentid":78,"obj":"cpicker","x":20,"y":10,"w":200,"h":200}
+                     {"page":12,"id":80,"obj":"btn","parentid":78,"x":5,"y":230,"w":230,"h":35,"radius":255,"text":"Close","text_font":20,"bg_opa":50,"bg_color":"#111","text_color":"#FFFFFF","align":"center"}
+
+
+      - obj: "p12b80"
+        event:
+          "up":
+            - service: openhasp.command
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: p12b78.delete
+                     
+      - obj: "p12b79"
+        properties:
+          "color": >
+                {% if is_state('light.olohuone_2','on') %}
+                {% set rgb = state_attr('light.olohuone_2','rgb_color') %}
+                {{ "#%02x%02x%02x" | format(rgb[0],rgb[1],rgb[2]) }}
+                {% endif %}
+        event:
+          "up":
+            - service: light.turn_on
+              data:
+                entity_id: light.olohuone_2
+                rgb_color: "[{{ r }},{{ g }},{{ b }}]"
+                
       - obj: "p12b12" # icon background
         properties:
           "bg_color": "{{ '#493416' if is_state('light.olohuone_2', 'on') else '#2C2C2C' }}"
@@ -1033,10 +1202,50 @@ terminal:
               entity_id: "light.keittio"
       - obj: "p12b45" # on/off label
         properties:
-          "text": "{{ 'On' if is_state('light.keittio', 'on') else 'Off' }}"
+          "text": "{{ expand('light.keittio') | selectattr('state','eq','on') | list | count() if (expand('light.keittio') | selectattr('state','eq','on') | list | count() > 0) else '0' }} Lamps On"
       - obj: "p12b43" # icon
         properties:
           "text_color": "{{ '#e88c03' if is_state('light.keittio', 'on') else '#6F6F6F' }}"
+          "color": >
+                {% if is_state('light.keittio','on') %}
+                {% set rgb = state_attr('light.keittio','rgb_color') %}
+                {{ "#%02x%02x%02x" | format(rgb[0],rgb[1],rgb[2]) }}
+                {% endif %}
+        event:
+          "up":
+            - service: openhasp.command # display the on-demand pop-up
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: jsonl
+                parameters: >-
+                     {"page":12,"id":180,"obj":"obj","x":40,"y":40,"w":240,"h":270,"radius":15,"click":true,"border_side":0,"bg_color":"#2C3E50","bg_grad_color":"#154360","bg_grad_dir":1,"shadow_opa":255,"shadow_color":"black","shadow_width":20,"shadow_spread":10}
+                     {"page":12,"id":181,"parentid":180,"obj":"cpicker","x":20,"y":10,"w":200,"h":200}
+                     {"page":12,"id":182,"obj":"btn","parentid":180,"x":5,"y":230,"w":230,"h":35,"radius":255,"text":"Close","text_font":20,"bg_opa":50,"bg_color":"#111","text_color":"#FFFFFF","align":"center"}
+
+      - obj: "p12b182"
+        event:
+          "up":
+            - service: openhasp.command
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: p12b180.delete
+                     
+      - obj: "p12b181"
+        properties:
+          "color": >
+                {% if is_state('light.keittio','on') %}
+                {% set rgb = state_attr('light.keittio','rgb_color') %}
+                {{ "#%02x%02x%02x" | format(rgb[0],rgb[1],rgb[2]) }}
+                {% endif %}
+        event:
+          "up":
+            - service: light.turn_on
+              data:
+                entity_id: light.yeelight_stripe
+                rgb_color: "[{{ r }},{{ g }},{{ b }}]"
+                
       - obj: "p12b42" # icon background
         properties:
           "bg_color": "{{ '#493416' if is_state('light.keittio', 'on') else '#2C2C2C' }}"
@@ -1066,10 +1275,51 @@ terminal:
               entity_id: "light.yeelight_stripe"
       - obj: "p12b25" # on/off label
         properties:
-          "text": "{{ 'On' if is_state('light.yeelight_stripe', 'on') else 'Off' }}"
+          "text": "{{ expand('light.yeelight_stripe') | selectattr('state','eq','on') | list | count() if (expand('light.yeelight_stripe') | selectattr('state','eq','on') | list | count() > 0) else '0' }} Lamps On"
       - obj: "p12b23" # icon
         properties:
           "text_color": "{{ '#e88c03' if is_state('light.yeelight_stripe', 'on') else '#6F6F6F' }}"
+          "color": >
+                {% if is_state('light.yeelight_stripe','on') %}
+                {% set rgb = state_attr('light.yeelight_stripe','rgb_color') %}
+                {{ "#%02x%02x%02x" | format(rgb[0],rgb[1],rgb[2]) }}
+                {% endif %}
+        event:
+          "up":
+            - service: openhasp.command # display the on-demand pop-up
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: jsonl
+                parameters: >-
+                     {"page":12,"id":178,"obj":"obj","x":40,"y":40,"w":240,"h":270,"radius":15,"click":true,"border_side":0,"bg_color":"#2C3E50","bg_grad_color":"#154360","bg_grad_dir":1,"shadow_opa":255,"shadow_color":"black","shadow_width":20,"shadow_spread":10}
+                     {"page":12,"id":179,"parentid":178,"obj":"cpicker","x":20,"y":10,"w":200,"h":200}
+                     {"page":12,"id":180,"obj":"btn","parentid":178,"x":5,"y":230,"w":230,"h":35,"radius":255,"text":"Close","text_font":20,"bg_opa":50,"bg_color":"#111","text_color":"#FFFFFF","align":"center"}
+
+      - obj: "p12b180"
+        event:
+          "up":
+            - service: openhasp.command
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: p12b178.delete
+                     
+      - obj: "p12b179"
+        properties:
+          "color": >
+                {% if is_state('light.yeelight_stripe','on') %}
+                {% set rgb = state_attr('light.yeelight_stripe','rgb_color') %}
+                {{ "#%02x%02x%02x" | format(rgb[0],rgb[1],rgb[2]) }}
+                {% endif %}
+        event:
+          "up":
+            - service: light.turn_on
+              data:
+                entity_id: light.yeelight_stripe
+                rgb_color: "[{{ r }},{{ g }},{{ b }}]"
+
+
       - obj: "p12b22" # icon background
         properties:
           "bg_color": "{{ '#493416' if is_state('light.yeelight_stripe', 'on') else '#2C2C2C' }}"
@@ -1104,7 +1354,7 @@ terminal:
               entity_id: "light.kattovalot"
       - obj: "p12b55" # on/off label
         properties:
-          "text": "{{ 'On' if is_state('light.kattovalot', 'on') else 'Off' }}"
+          "text": "{{ expand('light.kattovalot') | selectattr('state','eq','on') | list | count() if (expand('light.kattovalot') | selectattr('state','eq','on') | list | count() > 0) else '0' }} Lamps On"
       - obj: "p12b53" # icon
         properties:
           "text_color": "{{ '#e88c03' if is_state('light.kattovalot', 'on') else '#6F6F6F' }}"
@@ -1133,7 +1383,7 @@ terminal:
               entity_id: "light.moodivalot"
       - obj: "p12b65" # on/off label
         properties:
-          "text": "{{ 'On' if is_state('light.moodivalot', 'on') else 'Off' }}"
+          "text": "{{ expand('light.moodivalot') | selectattr('state','eq','on') | list | count() if (expand('light.moodivalot') | selectattr('state','eq','on') | list | count() > 0) else '0' }} Lamps On"
       - obj: "p8b63" # icon
         properties:
           "text_color": "{{ '#e88c03' if is_state('light.moodivalot', 'on') else '#6F6F6F' }}"
@@ -1162,11 +1412,51 @@ terminal:
               entity_id: "light.eteinen"
       - obj: "p12b75" # on/off label
         properties:
-          "text": |
-                  {{ expand('light.eteinen') | selectattr('state','eq','on') | list | count() if (expand('light.eteinen') | selectattr('state','eq','on') | list | count() > 0) else "0" }} Lamps On
+          "text": "{{ expand('light.eteinen') | selectattr('state','eq','on') | list | count() if (expand('light.eteinen') | selectattr('state','eq','on') | list | count() > 0) else '0' }} Lamps On"
+
       - obj: "p12b73" # icon
         properties:
           "text_color": "{{ '#e88c03' if is_state('light.eteinen', 'on') else '#6F6F6F' }}"
+          "color": >
+                {% if is_state('light.eteinen','on') %}
+                {% set rgb = state_attr('light.eteinen','rgb_color') %}
+                {{ "#%02x%02x%02x" | format(rgb[0],rgb[1],rgb[2]) }}
+                {% endif %}
+        event:
+          "up":
+            - service: openhasp.command # display the on-demand pop-up
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: jsonl
+                parameters: >-
+                     {"page":12,"id":184,"obj":"obj","x":40,"y":40,"w":240,"h":270,"radius":15,"click":true,"border_side":0,"bg_color":"#2C3E50","bg_grad_color":"#154360","bg_grad_dir":1,"shadow_opa":255,"shadow_color":"black","shadow_width":20,"shadow_spread":10}
+                     {"page":12,"id":185,"parentid":184,"obj":"cpicker","x":20,"y":10,"w":200,"h":200}
+                     {"page":12,"id":186,"obj":"btn","parentid":184,"x":5,"y":230,"w":230,"h":35,"radius":255,"text":"Close","text_font":20,"bg_opa":50,"bg_color":"#111","text_color":"#FFFFFF","align":"center"}
+
+      - obj: "p12b186"
+        event:
+          "up":
+            - service: openhasp.command
+              target:
+                entity_id: openhasp.terminal
+              data:
+                keyword: p12b184.delete
+                     
+      - obj: "p12b185"
+        properties:
+          "color": >
+                {% if is_state('light.eteinen','on') %}
+                {% set rgb = state_attr('light.eteinen','rgb_color') %}
+                {{ "#%02x%02x%02x" | format(rgb[0],rgb[1],rgb[2]) }}
+                {% endif %}
+        event:
+          "up":
+            - service: light.turn_on
+              data:
+                entity_id: light.eteinen
+                rgb_color: "[{{ r }},{{ g }},{{ b }}]"
+                
       - obj: "p12b72" # icon background
         properties:
           "bg_color": "{{ '#493416' if is_state('light.eteinen', 'on') else '#2C2C2C' }}"
@@ -1192,7 +1482,7 @@ terminal:
               entity_id: "light.ei_kattovalot"
       - obj: "p12b95" # on/off label
         properties:
-          "text": "{{ 'On' if is_state('light.ei_kattovalot', 'on') else 'Off' }}"
+          "text": "{{ expand('light.ei_kattovalot') | selectattr('state','eq','on') | list | count() if (expand('light.ei_kattovalot') | selectattr('state','eq','on') | list | count() > 0) else '0' }} Lamps On"
       - obj: "p12b93" # icon
         properties:
           "text_color": "{{ '#e88c03' if is_state('light.ei_kattovalot', 'on') else '#6F6F6F' }}"
@@ -1214,5 +1504,32 @@ terminal:
                 entity_id: light.ei_kattovalot
                 brightness:  "{{ val }}"
                 
-
+      - obj: "p12b81" # button
+        event:
+          "down":
+            - service: light.toggle
+              entity_id: "light.kaikki_valot"
+      - obj: "p12b85" # on/off label
+        properties:
+          "text": "{{ expand('light.kaikki_valot') | selectattr('state','eq','on') | list | count() if (expand('light.kaikki_valot') | selectattr('state','eq','on') | list | count() > 0) else '0' }} Lamps On"
+      - obj: "p12b83" # icon
+        properties:
+          "text_color": "{{ '#e88c03' if is_state('light.kaikki_valot', 'on') else '#6F6F6F' }}"
+      - obj: "p12b82" # icon background
+        properties:
+          "bg_color": "{{ '#493416' if is_state('light.kaikki_valot', 'on') else '#2C2C2C' }}"
+      - obj: "p12b86" # slider
+        properties:
+          "val": "{{ state_attr('light.kaikki_valot', 'brightness') if state_attr('light.kaikki_valot', 'brightness') != None else 0 }}"
+        event:
+          "changed":
+            - service: light.turn_on
+              data:
+                entity_id: light.kaikki_valot
+                brightness:  "{{ val }}"
+          "up":
+            - service: light.turn_on
+              data:
+                entity_id: light.kaikki_valot
+                brightness:  "{{ val }}"
                 
